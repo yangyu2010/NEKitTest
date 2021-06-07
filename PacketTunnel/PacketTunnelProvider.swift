@@ -239,18 +239,93 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     override func startTunnel(options: [String : NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {
         
-        let ipv4Settings = NEIPv4Settings(addresses: ["127.1.1.1"], subnetMasks: ["172.16.209.5"])
-           let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "8.8.8.8")
-           networkSettings.mtu = 1500
-        networkSettings.ipv4Settings = ipv4Settings
-           setTunnelNetworkSettings(networkSettings) {
-               error in
-               guard error == nil else {
-                   completionHandler(error)
-                   return
-               }
-                   completionHandler(nil)
-           }
+        let ipv4Settings = NEIPv4Settings(addresses: ["192.0.2.1"], subnetMasks: ["255.255.255.0"])
+        ipv4Settings.includedRoutes = [NEIPv4Route.default()]
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "192.0.2.2")
+        settings.ipv4Settings = ipv4Settings;
+        settings.mtu = 1600
+        
+        let proxySettings = NEProxySettings()
+        let proxyServerPort = 1080
+        let proxyServerName = "localhost";
+        proxySettings.httpEnabled = true;
+        proxySettings.httpServer = NEProxyServer(address: proxyServerName, port: proxyServerPort)
+        proxySettings.httpEnabled = true;
+        proxySettings.httpServer = NEProxyServer(address: proxyServerName, port: proxyServerPort)
+        proxySettings.httpEnabled = true;
+        proxySettings.excludeSimpleHostnames = true;
+        settings.proxySettings = proxySettings;
+
+        let dnsServers = ["10.10.10.1"]
+        let dnsSettings = NEDNSSettings(servers: dnsServers)
+        dnsSettings.matchDomains = [""]
+        settings.dnsSettings = dnsSettings;
+
+        self.setTunnelNetworkSettings(settings) { error in
+            completionHandler(error)
+        }
+        
+        //        NEDNSSettings *dnsSettings = [[NEDNSSettings alloc] initWithServers:dnsServers];
+        //        dnsSettings.matchDomains = @[@""];
+        //        settings.DNSSettings = dnsSettings;
+
+        
+//        NSString *generalConfContent = [NSString stringWithContentsOfURL:[Potatso sharedGeneralConfUrl] encoding:NSUTF8StringEncoding error:nil];
+//        NSDictionary *generalConf = [generalConfContent jsonDictionary];
+//        NSString *dns = generalConf[@"dns"];
+//        NEIPv4Settings *ipv4Settings = [[NEIPv4Settings alloc] initWithAddresses:@[@"192.0.2.1"] subnetMasks:@[@"255.255.255.0"]];
+//        NSArray *dnsServers;
+//        if (dns.length) {
+//            dnsServers = [dns componentsSeparatedByString:@","];
+//            NSLog(@"custom dns servers: %@", dnsServers);
+//        }else {
+//            dnsServers = [DNSConfig getSystemDnsServers];
+//            NSLog(@"system dns servers: %@", dnsServers);
+//        }
+//        ipv4Settings.includedRoutes = @[[NEIPv4Route defaultRoute]];
+//        NEPacketTunnelNetworkSettings *settings = [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"192.0.2.2"];
+//        settings.IPv4Settings = ipv4Settings;
+//        settings.MTU = @(TunnelMTU);
+//        NEProxySettings* proxySettings = [[NEProxySettings alloc] init];
+//        NSInteger proxyServerPort = [ProxyManager sharedManager].httpProxyPort;
+//        NSString *proxyServerName = @"localhost";
+//
+//        proxySettings.HTTPEnabled = YES;
+//        proxySettings.HTTPServer = [[NEProxyServer alloc] initWithAddress:proxyServerName port:proxyServerPort];
+//        proxySettings.HTTPSEnabled = YES;
+//        proxySettings.HTTPSServer = [[NEProxyServer alloc] initWithAddress:proxyServerName port:proxyServerPort];
+//        proxySettings.excludeSimpleHostnames = YES;
+//        settings.proxySettings = proxySettings;
+//        NEDNSSettings *dnsSettings = [[NEDNSSettings alloc] initWithServers:dnsServers];
+//        dnsSettings.matchDomains = @[@""];
+//        settings.DNSSettings = dnsSettings;
+//        [self setTunnelNetworkSettings:settings completionHandler:^(NSError * _Nullable error) {
+//            if (error) {
+//                if (completionHandler) {
+//                    completionHandler(error);
+//                }
+//            }else{
+//                if (completionHandler) {
+//                    completionHandler(nil);
+//                }
+//            }
+//        }];
+        
+        
+        
+        
+//        let ipv4Settings = NEIPv4Settings(addresses: ["127.1.1.1"], subnetMasks: ["172.16.209.5"])
+//           let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "8.8.8.8")
+//           networkSettings.mtu = 1500
+//        networkSettings.ipv4Settings = ipv4Settings
+//           setTunnelNetworkSettings(networkSettings) {
+//               error in
+//               guard error == nil else {
+//                   completionHandler(error)
+//                   return
+//               }
+//                   completionHandler(nil)
+//           }
     }
     
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
