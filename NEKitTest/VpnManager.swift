@@ -9,7 +9,6 @@
 import Foundation
 import NetworkExtension
 
-
 let kProxyServiceVPNStatusNotification = "kProxyServiceVPNStatusNotification"
 
 enum VPNStatus {
@@ -80,9 +79,9 @@ extension VpnManager{
     fileprivate func createProviderManager() -> NETunnelProviderManager {
         let manager = NETunnelProviderManager()
         let conf = NETunnelProviderProtocol()
-        conf.serverAddress = "NETest VPN"
+        conf.serverAddress = "Rabbit"
         manager.protocolConfiguration = conf
-        manager.localizedDescription = "NETest VPN"
+        manager.localizedDescription = "Rabbit VPN"
         return manager
     }
     
@@ -99,7 +98,7 @@ extension VpnManager{
             }
             
             manager.isEnabled = true
-            self.setRulerConfig(manager)
+//            self.setRulerConfig(manager)
             manager.saveToPreferences{
                 if $0 != nil{complete(nil);return;}
                 manager.loadFromPreferences{
@@ -147,10 +146,8 @@ extension VpnManager{
         self.loadAndCreatePrividerManager { (manager) in
             guard let manager = manager else{return}
             do{
-                try manager.connection.startVPNTunnel()
-                print("开启VPN成功")
+                try manager.connection.startVPNTunnel(options: [:])
             }catch let err{
-                print("开启VPN失败")
                 print(err)
             }
         }
@@ -169,18 +166,7 @@ extension VpnManager{
         let str = String(data: Data!, encoding: String.Encoding.utf8)!
         return str
     }
-    
+
     fileprivate func setRulerConfig(_ manager:NETunnelProviderManager){
-        var conf = [String:AnyObject]()
-        
-        conf["ss_address"] = "mulberry.dynamic.138576.xyz" as AnyObject?
-        conf["ss_port"] = 16061 as AnyObject?
-        conf["ss_method"] = "RC4MD5" as AnyObject? // 大写 没有横杠 看Extension中的枚举类设定 否则引发fatal error
-        conf["ss_password"] = "8bc01b4447b58ca9" as AnyObject?
-        conf["ymal_conf"] = getRuleConf() as AnyObject?
-        let orignConf = manager.protocolConfiguration as! NETunnelProviderProtocol
-        orignConf.providerConfiguration = conf
-        orignConf.providerBundleIdentifier = "com.weefic.NEKitTest.PacketTunnel"
-        manager.protocolConfiguration = orignConf
     }
 }

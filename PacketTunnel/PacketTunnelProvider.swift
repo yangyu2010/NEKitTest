@@ -9,6 +9,160 @@ import NetworkExtension
 import CocoaLumberjackSwift
 import Yaml
 import NEKit
+import os.log
+
+
+class PacketTunnelProvider: NEPacketTunnelProvider {
+    
+    private var pendingCompletion: ((Error?) -> Void)?
+    private var udpSession: NWUDPSession!
+    private var observer: AnyObject?
+    
+    /// 启动网络隧道，当主App调用startVPNTunnel()后执行；
+    /// 最后通过调用completionHandler(nil or error)，完成建立隧道或由于错误而无法启动隧道。
+    override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
+                
+        pendingCompletion = completionHandler
+        setupUDPSession()
+
+    }
+    
+    /// 停止网络隧道，当主App调用stopVPNTunnel()或其他原因停止网络隧道时候执行；
+    /// 如果想在PacketTunnelProvider内部停止，不能调用这个方法，应该调用cancelTunnelWithError()。
+    override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
+        // Add code here to start the process of stopping the tunnel.
+        completionHandler()
+    }
+    
+    /// 处理主App发送过来的消息，
+    /// 主App可以通过`let session = manager.connection as? NETunnelProviderSession`，
+    /// 再调用`session.sendProviderMessage(_ messageData: Data, responseHandler:)`向tunnel发送数据，
+    /// tunnel回调completionHandler返回数据。
+    override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
+        // Add code here to handle the message.
+        if let handler = completionHandler {
+            handler(messageData)
+        }
+    }
+    
+    /// 当设备即将进入睡眠状态时，系统会调用此方法。
+    override func sleep(completionHandler: @escaping () -> Void) {
+        // Add code here to get ready to sleep.
+        completionHandler()
+    }
+    
+    /// 当设备从睡眠模式唤醒时，系统会调用此方法。
+    override func wake() {
+        // Add code here to wake up.
+    }
+}
+
+private extension PacketTunnelProvider {
+    func setupUDPSession() {
+        let endPoint = NWHostEndpoint(hostname: "8.8.8.8", port: "88")
+        udpSession = createUDPSession(to: endPoint, from: nil)
+        observer = udpSession.observe(\.state, options: [.new]) { [weak self] session, _ in
+            self?.udpSession(session, didUpdateState: session.state)
+        }
+    }
+    
+    func udpSession(_ session: NWUDPSession, didUpdateState state: NWUDPSessionState) {
+        switch state {
+        case .ready:
+            os_log(.default, log: .default, "Connet UDP Server successed!!")
+            setupTunnelNetworkSettings()
+            localPacketsToServer()
+        case .failed:
+            os_log(.default, log: .default, "Connet UDP Server failed")
+            pendingCompletion?(NEVPNError(.connectionFailed))
+            pendingCompletion = nil
+        default:
+            break
+        }
+    }
+    
+    /// 给虚拟网卡配置虚拟IP，DNS设置，代理设置，隧道MTU和IP路由
+    func setupTunnelNetworkSettings() {
+        let ip = "10.8.0.2"
+        let subnet = "255.255.255.0"
+        let dns = "8.8.8.8,8.4.4.4"
+        
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "8.8.8.8")
+        settings.mtu = 1400
+        
+        /// 分配给TUN接口的IPv4地址和网络掩码
+        let ipv4Settings = NEIPv4Settings(addresses: [ip], subnetMasks: [subnet])
+        /// 指定哪些IPv4网络流量的路由将被路由到TUN接口
+        ipv4Settings.includedRoutes = [NEIPv4Route.default()]
+        settings.ipv4Settings = ipv4Settings
+        
+        let dnsSettings = NEDNSSettings(servers: dns.components(separatedBy: ","))
+        /// overrides system DNS settings
+        dnsSettings.matchDomains = [""]
+        settings.dnsSettings = dnsSettings
+        
+        setTunnelNetworkSettings(settings) { [weak self] error in
+            self?.pendingCompletion?(error)
+            if let error = error {
+                os_log(.default, log: .default, "setTunnelNetworkSettings error: %{public}@", error.localizedDescription)
+            } else {
+//                TunnelInterface.startTun2Socks(1080)
+//                DispatchQueue.main.asyncAfter(deadline: .now()+1) {
+//                    TunnelInterface.processPackets()
+//                }
+                
+                self?.remotePacketsToLocal()
+            }
+        }
+    }
+    
+    func remotePacketsToLocal() {
+        udpSession.setReadHandler({ [weak self] packets, _ in
+            if let packets = packets {
+                packets.forEach {
+//                    self?.dataStorage.receivePackets = ($0 as NSData).description
+//                    YYDarwinNotificationManager.sharedInstance().postNotification(forName: YYVPNManager.didReceivePacketsNotification)
+                    self?.packetFlow.writePackets([$0], withProtocols: [AF_INET as NSNumber])
+
+                    os_log(.default, log: .default, "setReadHandler223 ")
+
+                }
+            }
+        }, maxDatagrams: .max)
+    }
+    
+    func localPacketsToServer() {
+        
+        packetFlow.readPackets { [weak self] packets, _ in
+            os_log(.default, log: .default, "readPackets")
+            
+            packets.forEach {
+                let data = $0
+                
+                
+//                if let ip = IPPacket.peekDestinationAddress(data)
+//                   {
+//                    let desc = ip.presentation
+//                    os_log(.default, log: .default, "readPackets desc %@", desc)
+//                } else {
+//                    os_log(.default, log: .default, "no readPackets ip ")
+//                }
+                
+                
+                self?.udpSession.writeDatagram($0) { error in
+                    if let error = error {
+                        os_log(.default, log: .default, "udpSession.writeDatagram error: %{public}@", "\(error)")
+                    }
+                }
+            }
+            
+            self?.localPacketsToServer()
+        }
+    }
+}
+
+
+/**
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
     
@@ -23,7 +177,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     var started:Bool = false
     
-    /*
+    
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         
         NSLog("PacketTunnelProvider startTunnel 223232324555");
@@ -219,6 +373,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 let resolver = UDPDNSResolver(address: IPAddress(fromString: "223.5.5.5")!, port: Port(port: 53))
                 dnsServer.registerResolver(resolver)
                
+//                IPPacket.peekIPVersion(<#T##data: Data##Data#>)
+//                IPPacket.peekDestinationAddress(<#T##data: Data##Data#>)
+                
                 self.interface.register(stack: dnsServer)
                 DNSServer.currentServer = dnsServer
                 let udpStack = UDPDirectStack()
@@ -234,100 +391,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         
     }
     
-    */
-    
-    
-    override func startTunnel(options: [String : NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {
-        
-        let ipv4Settings = NEIPv4Settings(addresses: ["192.0.2.1"], subnetMasks: ["255.255.255.0"])
-        ipv4Settings.includedRoutes = [NEIPv4Route.default()]
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "192.0.2.2")
-        settings.ipv4Settings = ipv4Settings;
-        settings.mtu = 1600
-        
-        let proxySettings = NEProxySettings()
-        let proxyServerPort = 1080
-        let proxyServerName = "localhost";
-        proxySettings.httpEnabled = true;
-        proxySettings.httpServer = NEProxyServer(address: proxyServerName, port: proxyServerPort)
-        proxySettings.httpEnabled = true;
-        proxySettings.httpServer = NEProxyServer(address: proxyServerName, port: proxyServerPort)
-        proxySettings.httpEnabled = true;
-        proxySettings.excludeSimpleHostnames = true;
-        settings.proxySettings = proxySettings;
-
-        let dnsServers = ["10.10.10.1"]
-        let dnsSettings = NEDNSSettings(servers: dnsServers)
-        dnsSettings.matchDomains = [""]
-        settings.dnsSettings = dnsSettings;
-
-        self.setTunnelNetworkSettings(settings) { error in
-            completionHandler(error)
-        }
-        
-        //        NEDNSSettings *dnsSettings = [[NEDNSSettings alloc] initWithServers:dnsServers];
-        //        dnsSettings.matchDomains = @[@""];
-        //        settings.DNSSettings = dnsSettings;
-
-        
-//        NSString *generalConfContent = [NSString stringWithContentsOfURL:[Potatso sharedGeneralConfUrl] encoding:NSUTF8StringEncoding error:nil];
-//        NSDictionary *generalConf = [generalConfContent jsonDictionary];
-//        NSString *dns = generalConf[@"dns"];
-//        NEIPv4Settings *ipv4Settings = [[NEIPv4Settings alloc] initWithAddresses:@[@"192.0.2.1"] subnetMasks:@[@"255.255.255.0"]];
-//        NSArray *dnsServers;
-//        if (dns.length) {
-//            dnsServers = [dns componentsSeparatedByString:@","];
-//            NSLog(@"custom dns servers: %@", dnsServers);
-//        }else {
-//            dnsServers = [DNSConfig getSystemDnsServers];
-//            NSLog(@"system dns servers: %@", dnsServers);
-//        }
-//        ipv4Settings.includedRoutes = @[[NEIPv4Route defaultRoute]];
-//        NEPacketTunnelNetworkSettings *settings = [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"192.0.2.2"];
-//        settings.IPv4Settings = ipv4Settings;
-//        settings.MTU = @(TunnelMTU);
-//        NEProxySettings* proxySettings = [[NEProxySettings alloc] init];
-//        NSInteger proxyServerPort = [ProxyManager sharedManager].httpProxyPort;
-//        NSString *proxyServerName = @"localhost";
-//
-//        proxySettings.HTTPEnabled = YES;
-//        proxySettings.HTTPServer = [[NEProxyServer alloc] initWithAddress:proxyServerName port:proxyServerPort];
-//        proxySettings.HTTPSEnabled = YES;
-//        proxySettings.HTTPSServer = [[NEProxyServer alloc] initWithAddress:proxyServerName port:proxyServerPort];
-//        proxySettings.excludeSimpleHostnames = YES;
-//        settings.proxySettings = proxySettings;
-//        NEDNSSettings *dnsSettings = [[NEDNSSettings alloc] initWithServers:dnsServers];
-//        dnsSettings.matchDomains = @[@""];
-//        settings.DNSSettings = dnsSettings;
-//        [self setTunnelNetworkSettings:settings completionHandler:^(NSError * _Nullable error) {
-//            if (error) {
-//                if (completionHandler) {
-//                    completionHandler(error);
-//                }
-//            }else{
-//                if (completionHandler) {
-//                    completionHandler(nil);
-//                }
-//            }
-//        }];
-        
-        
-        
-        
-//        let ipv4Settings = NEIPv4Settings(addresses: ["127.1.1.1"], subnetMasks: ["172.16.209.5"])
-//           let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "8.8.8.8")
-//           networkSettings.mtu = 1500
-//        networkSettings.ipv4Settings = ipv4Settings
-//           setTunnelNetworkSettings(networkSettings) {
-//               error in
-//               guard error == nil else {
-//                   completionHandler(error)
-//                   return
-//               }
-//                   completionHandler(nil)
-//           }
-    }
-    
+ 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         if enablePacketProcessing {
             interface.stop()
@@ -369,3 +433,4 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         return str
     }
 }
+ */

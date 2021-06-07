@@ -38,10 +38,6 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        let request = URLRequest(url:URL(string: "http://www.sohu.com")!)
-        let session = URLSession.shared
-        let task = session.dataTask(with: request)
-        task.resume()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -56,15 +52,15 @@ class ViewController: UIViewController {
     func updateConnectButton(){
         switch status {
         case .connecting:
-            connectButton.setTitle("connecting", for: .normal)
+            connectButton.setTitle("connecting", for: UIControl.State())
         case .disconnecting:
-            connectButton.setTitle("disconnect", for: .normal)
+            connectButton.setTitle("disconnect", for: UIControl.State())
         case .on:
-            connectButton.setTitle("Disconnect", for: .normal)
+            connectButton.setTitle("Disconnect", for: UIControl.State())
         case .off:
-            connectButton.setTitle("Connect", for: .normal)
+            connectButton.setTitle("Connect", for: UIControl.State())
+
         }
-        
         connectButton.isEnabled = [VPNStatus.on,VPNStatus.off].contains(VpnManager.shared.vpnStatus)
 
         
@@ -72,15 +68,11 @@ class ViewController: UIViewController {
     
     @IBAction func connectTap(_ sender: AnyObject) {
         print("connect tap")
-
         if(VpnManager.shared.vpnStatus == .off){
             VpnManager.shared.connect()
         }else{
             VpnManager.shared.disconnect()
         }
-        
-        
-        
     }
 }
 
