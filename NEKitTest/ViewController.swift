@@ -9,10 +9,13 @@
 
  ./carthage.sh update --platform ios
  
+ carthage update --no-use-binaries --platform ios
+
+ carthage update --no-use-binaries --platform mac,ios
  */
 
 import UIKit
-import NEKit
+
 import NetworkExtension
 
 class ViewController: UIViewController {

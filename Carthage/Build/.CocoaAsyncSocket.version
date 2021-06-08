@@ -3,7 +3,7 @@
   "iOS" : [
     {
       "name" : "CocoaAsyncSocket",
-      "hash" : "00655e6de5d0d4e94d95e50006dd8863c21d3bf690864a4345f5f1089755f94c",
+      "hash" : "cc2c07ac4430184c2aca7a76e4b3c4a4d59e3ca82507053dba9335e1343b1837",
       "linking" : "dynamic"
     }
   ]

@@ -2,7 +2,7 @@
   "commitish" : "0.2.0",
   "iOS" : [
     {
-      "hash" : "eb04f3aefef31149a7485b62812a08e976658452c6991efebd2cb34953601292",
+      "hash" : "8f576aa92852355c4a68d7b9c67fbfcf1cade71a26aa4534f825c6f965a4a113",
       "name" : "Resolver",
       "linking" : "dynamic",
       "swiftToolchainVersion" : "5.4 (swiftlang-1205.0.26.9 clang-1205.0.19.55)"

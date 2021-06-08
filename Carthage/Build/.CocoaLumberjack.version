@@ -3,11 +3,11 @@
   "iOS" : [
     {
       "name" : "CocoaLumberjack",
-      "hash" : "88ae26ec31605fe29fef00b634d9d9b6aa1499bfb6f024e145191bd761e6cb58",
+      "hash" : "c914bfe0e3612067403d2a9647a35187386281779da1442811c678355c07abb4",
       "linking" : "dynamic"
     },
     {
-      "hash" : "d028fd82227b06f54aec2e46779fe0b9ae05a5a91fc1aceb9c86a774fbb78227",
+      "hash" : "50572ce1c81f4ddba4c96c0df7bb2f539759b48e0b4f9b75f5534d1075e13f01",
       "name" : "CocoaLumberjackSwift",
       "linking" : "dynamic",
       "swiftToolchainVersion" : "5.4 (swiftlang-1205.0.26.9 clang-1205.0.19.55)"

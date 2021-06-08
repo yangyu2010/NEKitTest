@@ -6,11 +6,11 @@
 //
 
 import NetworkExtension
-import CocoaLumberjackSwift
-import Yaml
+//import CocoaLumberjackSwift
+//import Yaml
 import NEKit
 import os.log
-
+//import tun2socks
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
     
@@ -132,32 +132,58 @@ private extension PacketTunnelProvider {
     }
     
     func localPacketsToServer() {
+//        let udpStack = UDPDirectStack()
+
         
-        packetFlow.readPackets { [weak self] packets, _ in
-            os_log(.default, log: .default, "readPackets")
-            
-            packets.forEach {
-                let data = $0
+        packetFlow.readPackets { packets, versions in
+            for (i, packet) in packets.enumerated() {
                 
+                os_log(.default, log: .default, "no readPackets ip ")
+
                 
-//                if let ip = IPPacket.peekDestinationAddress(data)
-//                   {
-//                    let desc = ip.presentation
-//                    os_log(.default, log: .default, "readPackets desc %@", desc)
-//                } else {
+//                if udpStack.input(packet: packet, version: versions[i]) {
+                    
+//                    if IPPacket.peekProtocol(packet) == .udp {
+//                        os_log(.default, log: .default, "peekProtocol udp ")
+//
+//                        if let ip = IPPacket.peekDestinationAddress(packet)
+//                           {
+//                            let desc = ip.presentation
+//                            os_log(.default, log: .default, "readPackets desc %@", desc)
+//                        } else {
+//                            os_log(.default, log: .default, "no readPackets ip ")
+//                        }
+//                    }
+                    
 //                    os_log(.default, log: .default, "no readPackets ip ")
 //                }
-                
-                
-                self?.udpSession.writeDatagram($0) { error in
-                    if let error = error {
-                        os_log(.default, log: .default, "udpSession.writeDatagram error: %{public}@", "\(error)")
-                    }
-                }
             }
-            
-            self?.localPacketsToServer()
         }
+        
+        
+        
+        
+//        packetFlow.readPackets { [weak self] packets, _ in
+//            os_log(.default, log: .default, "readPackets")
+//
+//            packets.forEach {
+//                let data = $0
+//
+//                let udpStack = UDPDirectStack()
+//                if udpStack.input(packet: data, version: <#T##NSNumber?#>)
+//
+////                if let ip = IPPacket.peekDestinationAddress(data)
+////                   {
+////                    let desc = ip.presentation
+////                    os_log(.default, log: .default, "readPackets desc %@", desc)
+////                } else {
+////                    os_log(.default, log: .default, "no readPackets ip ")
+////                }
+//
+//            }
+//
+//            self?.localPacketsToServer()
+//        }
     }
 }
 
